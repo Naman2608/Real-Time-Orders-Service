@@ -11,13 +11,13 @@ Any INSERT / UPDATE / DELETE on the `orders` table is pushed to every connected 
 
 ### Option 1 — Pre-built JAR *(recommended)*
 
-Download **[orders-realtime.jar](https://github.com/Naman2608/Real-Time-Orders-Service/releases/download/v1.0.0/orders-realtime.jar)** from Releases, then:
+Download **[orders-realtime.jar](https://github.com/Naman2608/Real-Time-Orders-Service/releases/download/v1.0.0/orders-realtime.jar)** from Releases into the project folder, then:
 
 ```bash
 java -jar orders-realtime.jar
 ```
 
-Or double-click **`run-jar.bat`** (Windows) if you have the repo cloned.
+Or double-click **`run.bat`** (Windows) — builds and runs from source, no JAR needed.
 
 ---
 
@@ -32,8 +32,6 @@ Maven is **not** required — the wrapper downloads it automatically.
 # Mac / Linux
 ./mvnw spring-boot:run
 ```
-
-Or double-click **`run.bat`** on Windows.
 
 ---
 
