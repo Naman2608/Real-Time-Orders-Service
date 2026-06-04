@@ -11,18 +11,18 @@ Any INSERT / UPDATE / DELETE on the `orders` table is pushed to every connected 
 
 **Requirement:** Java 17+
 
+1. Download **[orders-realtime.jar](https://github.com/Naman2608/Real-Time-Orders-Service/releases/download/v1.0.0/orders-realtime.jar)** from the [Releases page](https://github.com/Naman2608/Real-Time-Orders-Service/releases/tag/v1.0.0)
+2. Run it:
+
 ```bash
 # Windows
-run-jar.bat
+run-jar.bat          # if you cloned the repo
 
-# Mac / Linux
-chmod +x run-jar.sh && ./run-jar.sh
-
-# Or directly
+# Or directly from anywhere
 java -jar orders-realtime.jar
 ```
 
-`orders-realtime.jar` is included in the project root. It is a self-contained fat JAR — PostgreSQL is embedded inside it. No database installation required.
+Self-contained fat JAR — PostgreSQL is embedded inside. No database installation required.
 
 ---
 
