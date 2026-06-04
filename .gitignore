@@ -1,0 +1,20 @@
+# Build output
+target/
+
+# Pre-built JAR (too large for GitHub; recruiter can build with: mvnw.cmd spring-boot:run)
+orders-realtime.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.classpath
+*.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Real-Time Orders Dashboard</title>
+  <style>
+    /* ── Reset + full-screen layout ────────────────────────────── */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      padding: 14px 18px;
+      gap: 10px;
+    }
+
+    /* ── Header row ─────────────────────────────────────────────── */
+    .header {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header-left h1   { font-size: 1.3rem; color: #f8fafc; }
+    .header-left span { font-size: 0.78rem; color: #64748b; }
+
+    #status-bar {
+      display: flex; align-items: center; gap: 7px;
+      padding: 5px 12px; border-radius: 20px;
+      background: #1e293b; font-size: 0.8rem;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .dot.connected    { background: #22c55e; box-shadow: 0 0 5px #22c55e; }
+    .dot.disconnected { background: #ef4444; }
+    .dot.connecting   { background: #f59e0b; animation: pulse 1s infinite; }
+    @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── 3-column main grid ─────────────────────────────────────── */
+    .main {
+      flex: 1;
+      min-height: 0;          /* crucial: allows children to shrink */
+      display: grid;
+      grid-template-columns: 270px 1fr 260px;
+      gap: 12px;
+    }
+
+    /* ── Generic panel ──────────────────────────────────────────── */
+    .panel {
+      background: #1e293b;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;       /* children scroll, not the panel */
+      min-height: 0;
+    }
+
+    .panel-title {
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.88rem; font-weight: 600; color: #cbd5e1;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #334155;
+    }
+    .panel-title .sub { font-size: 0.72rem; font-weight: 400; color: #475569; }
+
+    .panel-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+    .panel-body::-webkit-scrollbar { width: 4px; }
+    .panel-body::-webkit-scrollbar-track { background: transparent; }
+    .panel-body::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+    /* ── Controls form ──────────────────────────────────────────── */
+    .form-group { margin-bottom: 9px; }
+    label { display: block; font-size: 0.74rem; color: #64748b; margin-bottom: 3px; }
+
+    input, select {
+      width: 100%; padding: 6px 9px; border-radius: 6px;
+      border: 1px solid #334155; background: #0f172a;
+      color: #e2e8f0; font-size: 0.84rem;
+    }
+    input:focus, select:focus { outline: none; border-color: #6366f1; }
+
+    .btn-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    button {
+      padding: 6px 14px; border: none; border-radius: 6px;
+      font-size: 0.8rem; cursor: pointer; font-weight: 600;
+      transition: opacity .15s;
+    }
+    button:hover { opacity: .82; }
+    .btn-create { background: #6366f1; color: #fff; }
+    .btn-update { background: #0ea5e9; color: #fff; }
+    .btn-delete { background: #ef4444; color: #fff; }
+    .btn-icon   { background: #334155; color: #94a3b8; padding: 4px 9px; font-size: 0.75rem; border-radius: 5px; }
+
+    #error-toast {
+      display: none; margin-top: 9px; padding: 8px 12px;
+      background: #450a0a; border: 1px solid #b91c1c; border-radius: 7px;
+      color: #fca5a5; font-size: 0.78rem; line-height: 1.45;
+    }
+
+    .hint { font-size: 0.72rem; color: #475569; margin-top: 10px; line-height: 1.5; }
+    code  { background: #0f172a; padding: 1px 4px; border-radius: 3px; font-size: 0.71rem; }
+
+    /* ── Orders table ───────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+
+    thead { position: sticky; top: 0; background: #1e293b; z-index: 1; }
+    thead th {
+      text-align: left; padding: 0 10px 7px;
+      font-size: 0.7rem; color: #475569;
+      text-transform: uppercase; letter-spacing: .04em;
+      border-bottom: 1px solid #334155;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #0f172a;
+      cursor: pointer; transition: background .12s;
+    }
+    tbody tr:hover   { background: #263045; }
+    tbody tr.flash   { animation: rowFlash .55s ease; }
+    tbody tr.deleted { animation: rowFade .35s ease forwards; }
+    @keyframes rowFlash { 0%{background:#1d3461} 100%{background:transparent} }
+    @keyframes rowFade  { to{opacity:0;transform:translateX(6px)} }
+
+    tbody td { padding: 8px 10px; color: #cbd5e1; vertical-align: middle; }
+    .col-id   { color: #475569; font-size: 0.72rem; width: 36px; }
+    .col-time { color: #475569; font-size: 0.72rem; white-space: nowrap; }
+
+    .empty-row td { text-align: center; color: #475569; padding: 28px; }
+
+    /* ── Badges ─────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 99px;
+      font-size: 0.68rem; font-weight: 700; white-space: nowrap;
+    }
+    .badge-pending   { background:#78350f; color:#fde68a; }
+    .badge-shipped   { background:#1e3a5f; color:#93c5fd; }
+    .badge-delivered { background:#064e3b; color:#6ee7b7; }
+
+    /* ── Event feed ─────────────────────────────────────────────── */
+    .event-card {
+      padding: 8px 11px; border-radius: 7px; border-left: 3px solid;
+      font-size: 0.78rem; line-height: 1.5;
+      margin-bottom: 7px;
+      animation: slideIn .22s ease;
+    }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+    .event-INSERT { background:#052e16; border-color:#22c55e; }
+    .event-UPDATE { background:#172554; border-color:#3b82f6; }
+    .event-DELETE { background:#450a0a; border-color:#ef4444; }
+
+    .event-op  { font-weight:700; font-size:.7rem; letter-spacing:.04em; text-transform:uppercase; }
+    .op-INSERT { color:#22c55e; }
+    .op-UPDATE { color:#60a5fa; }
+    .op-DELETE { color:#f87171; }
+    .event-ts  { color:#475569; font-size:.7rem; float:right; }
+    .event-meta { margin-top:2px; color:#94a3b8; }
+    .event-meta strong { color:#e2e8f0; }
+
+    .empty { color:#475569; font-size:.8rem; text-align:center; padding:28px 0; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <h1>Real-Time Orders Dashboard</h1>
+    <span>DB changes pushed instantly via PostgreSQL LISTEN/NOTIFY → WebSocket</span>
+  </div>
+  <div id="status-bar">
+    <div class="dot connecting" id="status-dot"></div>
+    <span id="status-text">Connecting…</span>
+  </div>
+</div>
+
+<!-- 3-column main layout -->
+<div class="main">
+
+  <!-- Column 1: Controls -->
+  <div class="panel">
+    <div class="panel-title">Manage Orders</div>
+    <div class="panel-body">
+
+      <div class="form-group">
+        <label>Customer Name</label>
+        <input id="customerName" value="Alice" />
+      </div>
+      <div class="form-group">
+        <label>Product Name</label>
+        <input id="productName" value="Laptop" />
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="status">
+          <option value="pending">pending</option>
+          <option value="shipped">shipped</option>
+          <option value="delivered">delivered</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Order ID <span style="color:#334155">(update / delete)</span></label>
+        <input id="orderId" type="number" placeholder="click a row to fill" />
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-create" onclick="createOrder()">+ Create</button>
+        <button class="btn-update" onclick="updateOrder()">Update</button>
+        <button class="btn-delete" onclick="deleteOrder()">Delete</button>
+      </div>
+
+      <div id="error-toast"></div>
+
+      <p class="hint">
+        Click any row to auto-fill the ID.<br>
+        Valid flow: <code>pending</code> → <code>shipped</code> → <code>delivered</code>
+      </p>
+    </div>
+  </div>
+
+  <!-- Column 2: All Orders table -->
+  <div class="panel">
+    <div class="panel-title">
+      All Orders
+      <span style="display:flex;align-items:center;gap:7px">
+        <span id="order-count" class="sub"></span>
+        <button class="btn-icon" onclick="loadOrders()">↺ Refresh</button>
+      </span>
+    </div>
+    <div class="panel-body">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Customer</th>
+            <th>Product</th>
+            <th>Status</th>
+            <th>Updated At</th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody">
+          <tr class="empty-row"><td colspan="5">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Column 3: Live change log -->
+  <div class="panel">
+    <div class="panel-title">
+      Live Changes
+      <span id="badge-count" class="sub"></span>
+    </div>
+    <div class="panel-body" id="event-feed">
+      <div class="empty" id="empty-msg">Waiting for events…</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+
+<script>
+  const API = 'http://localhost:8080/api/orders';
+  let ordersMap  = {};
+  let eventCount = 0;
+
+  // ── WebSocket ────────────────────────────────────────────────────────────────
+  const stomp = new StompJs.Client({
+    webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+    reconnectDelay: 3000,
+    onConnect() {
+      setStatus('connected', 'Connected');
+      stomp.subscribe('/topic/orders', frame => {
+        try {
+          const n = JSON.parse(frame.body);
+          applyNotification(n);
+          appendEvent(n);
+        } catch (e) { console.error(e); }
+      });
+    },
+    onDisconnect() { setStatus('disconnected', 'Disconnected'); },
+    onStompError()  { setStatus('disconnected', 'Error'); }
+  });
+  stomp.activate();
+
+  // ── Orders table ─────────────────────────────────────────────────────────────
+  async function loadOrders() {
+    try {
+      const orders = await fetch(API).then(r => r.json());
+      ordersMap = {};
+      orders.forEach(o => { ordersMap[o.id] = norm(o); });
+      renderTable();
+    } catch (e) { console.error('Load failed', e); }
+  }
+
+  function applyNotification({ operation, data }) {
+    if (operation === 'DELETE') {
+      const row = document.getElementById('row-' + data.id);
+      if (row) {
+        row.classList.add('deleted');
+        setTimeout(() => { delete ordersMap[data.id]; renderTable(); }, 360);
+      } else {
+        delete ordersMap[data.id]; renderTable();
+      }
+    } else {
+      const isUpdate = !!ordersMap[data.id];
+      ordersMap[data.id] = norm(data);
+      renderTable();
+      if (isUpdate) flashRow(data.id);
+    }
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('orders-tbody');
+    const ids   = Object.keys(ordersMap).sort((a,b) => +a - +b);
+
+    document.getElementById('order-count').textContent =
+      ids.length ? `${ids.length} order${ids.length !== 1 ? 's' : ''}` : '';
+
+    if (!ids.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No orders yet — create one!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = ids.map(id => {
+      const o  = ordersMap[id];
+      const ts = fmtTime(o.updated_at);
+      return `<tr id="row-${o.id}" onclick="selectRow(${o.id})">
+        <td class="col-id">#${o.id}</td>
+        <td>${esc(o.customer_name)}</td>
+        <td>${esc(o.product_name)}</td>
+        <td><span class="badge badge-${o.status}">${o.status}</span></td>
+        <td class="col-time">${ts}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function flashRow(id) {
+    const r = document.getElementById('row-' + id);
+    if (!r) return;
+    r.classList.remove('flash');
+    void r.offsetWidth;
+    r.classList.add('flash');
+  }
+
+  function selectRow(id) {
+    const o = ordersMap[id];
+    if (!o) return;
+    document.getElementById('orderId').value       = id;
+    document.getElementById('customerName').value  = o.customer_name;
+    document.getElementById('productName').value   = o.product_name;
+  }
+
+  // ── Event feed ───────────────────────────────────────────────────────────────
+  function appendEvent({ operation, data }) {
+    document.getElementById('empty-msg')?.remove();
+    eventCount++;
+    document.getElementById('badge-count').textContent =
+      `(${eventCount} event${eventCount !== 1 ? 's' : ''})`;
+
+    const badge = data.status
+      ? `<span class="badge badge-${data.status}">${data.status}</span>` : '';
+    const card  = document.createElement('div');
+    card.className = `event-card event-${operation}`;
+    card.innerHTML = `
+      <div>
+        <span class="event-op op-${operation}">${operation}</span>
+        <span class="event-ts">${new Date().toLocaleTimeString()}</span>
+      </div>
+      <div class="event-meta">
+        <strong>#${data.id}</strong> · ${esc(data.customer_name || data.customerName || '')}
+        · ${esc(data.product_name || data.productName || '')} ${badge}
+      </div>`;
+
+    const feed = document.getElementById('event-feed');
+    feed.insertBefore(card, feed.firstChild);
+  }
+
+  // ── REST actions ─────────────────────────────────────────────────────────────
+  const $  = id => document.getElementById(id).value.trim();
+
+  async function createOrder() {
+    const r = await fetch(API, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerName: $('customerName'), productName: $('productName'), status: $('status') })
+    });
+    if (!r.ok) showErr(await r.json());
+  }
+
+  async function updateOrder() {
+    const id = $('orderId');
+    if (!id) return showErr({ message: 'Click a row or enter an Order ID first.' });
+    const r = await fetch(`${API}/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: $('status') })
+    });
+    if (!r.ok) showErr(await r.json());
+  }
+
+  async function deleteOrder() {
+    const id = $('orderId');
+    if (!id) return showErr({ message: 'Click a row or enter an Order ID first.' });
+    if (!confirm(`Delete order #${id}?`)) return;
+    const r = await fetch(`${API}/${id}`, { method: 'DELETE' });
+    if (!r.ok) showErr(await r.json());
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+  function setStatus(state, text) {
+    document.getElementById('status-dot').className = 'dot ' + state;
+    document.getElementById('status-text').textContent = text;
+  }
+
+  let errTimer;
+  function showErr(body) {
+    const t = document.getElementById('error-toast');
+    t.textContent = body?.message || 'Something went wrong.';
+    t.style.display = 'block';
+    clearTimeout(errTimer);
+    errTimer = setTimeout(() => { t.style.display = 'none'; }, 5000);
+  }
+
+  // Normalise camelCase (REST) and snake_case (WebSocket) to a single shape
+  function norm(o) {
+    return {
+      id:            o.id,
+      customer_name: o.customer_name || o.customerName || '',
+      product_name:  o.product_name  || o.productName  || '',
+      status:        o.status        || 'pending',
+      updated_at:    o.updated_at    || o.updatedAt    || null
+    };
+  }
+
+  function fmtTime(raw) {
+    if (!raw) return '—';
+    const d = new Date(raw);
+    return isNaN(d) ? raw : d.toLocaleString();
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  loadOrders();
+</script>
+</body>
+</html>
