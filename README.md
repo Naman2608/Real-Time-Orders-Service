@@ -5,44 +5,39 @@ Any INSERT / UPDATE / DELETE on the `orders` table is pushed to every connected 
 
 ---
 
-## Run It (Choose One)
+## How to Run
 
-### Option 1 — Pre-built JAR (easiest, just Java needed)
+**Requirement: Java 17+ only** — no database, no Docker, no Maven needed.
 
-**Requirement:** Java 17+
+### Option 1 — Pre-built JAR *(recommended)*
 
-1. Download **[orders-realtime.jar](https://github.com/Naman2608/Real-Time-Orders-Service/releases/download/v1.0.0/orders-realtime.jar)** from the [Releases page](https://github.com/Naman2608/Real-Time-Orders-Service/releases/tag/v1.0.0)
-2. Run it:
+Download **[orders-realtime.jar](https://github.com/Naman2608/Real-Time-Orders-Service/releases/download/v1.0.0/orders-realtime.jar)** from Releases, then:
 
 ```bash
-# Windows
-run-jar.bat          # if you cloned the repo
-
-# Or directly from anywhere
 java -jar orders-realtime.jar
 ```
 
-Self-contained fat JAR — PostgreSQL is embedded inside. No database installation required.
+Or double-click **`run-jar.bat`** (Windows) if you have the repo cloned.
 
 ---
 
-### Option 2 — Build from source (Maven wrapper included)
+### Option 2 — Build from source
 
-**Requirement:** Java 17+  — Maven is **not** required; `mvnw` downloads it automatically.
+Maven is **not** required — the wrapper downloads it automatically.
 
 ```bash
 # Windows
-mvnw.cmd spring-boot:run
+./mvnw.cmd spring-boot:run
 
 # Mac / Linux
-chmod +x mvnw && ./mvnw spring-boot:run
+./mvnw spring-boot:run
 ```
+
+Or double-click **`run.bat`** on Windows.
 
 ---
 
 ### Option 3 — Docker Compose
-
-**Requirement:** Docker Desktop
 
 ```bash
 docker-compose up --build
@@ -53,9 +48,8 @@ docker-compose up --build
 ## Open the Dashboard
 
 Once the backend is running, open `client/index.html` in any browser.
-No server needed — it is a plain HTML file.
 
-Use the form to create, update, or delete orders. Every change appears in the live feed within milliseconds.
+Use the form to create, update, or delete orders. Every change appears in the live table and feed within milliseconds.
 
 ---
 

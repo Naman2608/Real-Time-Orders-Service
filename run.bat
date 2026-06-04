@@ -9,5 +9,5 @@ echo  Once started:
 echo    Backend API : http://localhost:8080/api/orders
 echo    Dashboard   : open client\index.html in browser
 echo.
-mvnw.cmd spring-boot:run
+./mvnw.cmd spring-boot:run
 pause
