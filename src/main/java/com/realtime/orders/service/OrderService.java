@@ -39,12 +39,13 @@ public class OrderService {
     }
 
     public Order createOrder(OrderRequest request) {
+        if (request.getStatus() != null && !request.getStatus().equals("pending")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "New orders must start with status 'pending'. Cannot create an order as '" + request.getStatus() + "'.");
+        }
         Order order = new Order();
         order.setCustomerName(request.getCustomerName());
         order.setProductName(request.getProductName());
-        if (request.getStatus() != null) {
-            order.setStatus(request.getStatus());
-        }
         return orderRepository.save(order);
     }
 
